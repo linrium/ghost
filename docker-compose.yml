@@ -1,0 +1,19 @@
+services:
+  db:
+    build:
+      context: ./docker/postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ghost
+    volumes:
+      - pgdata:/var/lib/postgresql
+    command: >
+      postgres
+        -c shared_preload_libraries=pg_textsearch
+
+volumes:
+  pgdata:
