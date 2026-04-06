@@ -2,6 +2,8 @@
 
 import { useChat } from "@ai-sdk/react"
 import {
+  IconBrain,
+  IconChevronDown,
   IconMessageCircle,
   IconSend,
   IconWorld,
@@ -11,6 +13,11 @@ import {
 import { useForm } from "@tanstack/react-form"
 import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import {
   Sidebar,
@@ -45,6 +52,7 @@ function FetchWebPageToolCall({ part }: { part: FetchWebPageInvocation }) {
   const isPending =
     part.state === "input-streaming" || part.state === "input-available"
   const isError = part.state === "output-error"
+  const isDone = part.state === "output-available"
 
   function getLabel() {
     if (isStreaming) {
@@ -66,26 +74,31 @@ function FetchWebPageToolCall({ part }: { part: FetchWebPageInvocation }) {
 
   function getIcon() {
     if (isError) {
-      return <IconWorldX className="mt-0.5 shrink-0 text-destructive" />
+      return <IconWorldX className="shrink-0 text-destructive" />
     }
     if (isPending) {
-      return <IconWorld className="mt-0.5 shrink-0 animate-pulse" />
+      return <IconWorld className="shrink-0 animate-pulse" />
     }
-    return <IconWorldCheck className="mt-0.5 shrink-0 text-green-600" />
+    return <IconWorldCheck className="shrink-0 text-green-600" />
   }
 
   return (
-    <div className="flex max-w-[75%] items-start gap-2 rounded-xl border bg-background px-3 py-2 text-muted-foreground text-xs">
-      {getIcon()}
-      <div className="flex flex-col gap-0.5 overflow-hidden">
+    <Collapsible disabled={!isDone}>
+      <CollapsibleTrigger className="flex max-w-[75%] items-center gap-2 rounded-xl border bg-background px-3 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted/50 disabled:pointer-events-none">
+        {getIcon()}
         <span className="font-medium text-foreground">{getLabel()}</span>
-        {part.state === "output-available" && (
-          <span className="truncate opacity-70">
-            {part.output.content.slice(0, 120)}…
-          </span>
+        {isDone && (
+          <IconChevronDown className="ml-1 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         )}
-      </div>
-    </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-1 max-w-[75%]">
+        {isDone && (
+          <div className="whitespace-pre-wrap rounded-xl border bg-muted/40 px-3 py-2 text-muted-foreground text-xs leading-relaxed">
+            {part.output.content}
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -111,6 +124,26 @@ function MessagePart({
       >
         <span className="whitespace-pre-wrap">{part.text}</span>
       </div>
+    )
+  }
+
+  if (part.type === "reasoning") {
+    if (!part.text.trim()) {
+      return null
+    }
+    return (
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted/50">
+          <IconBrain className="size-3.5 shrink-0" />
+          <span>Thinking</span>
+          <IconChevronDown className="size-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1 max-w-[75%]">
+          <div className="whitespace-pre-wrap rounded-xl border bg-muted/40 px-3 py-2 text-muted-foreground text-xs italic leading-relaxed">
+            {part.text}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     )
   }
 
@@ -184,12 +217,20 @@ export default function ChatPage() {
                 message.role === "assistant" &&
                 !hasVisibleText
 
+              const reasoningParts = message.parts.filter(
+                (p) => p.type === "reasoning"
+              )
+              const otherParts = message.parts.filter(
+                (p) => p.type !== "reasoning"
+              )
+              const orderedParts = [...reasoningParts, ...otherParts]
+
               return (
                 <div
                   className={`flex flex-col gap-2 ${message.role === "user" ? "items-end" : "items-start"}`}
                   key={message.id}
                 >
-                  {message.parts.map((part, i) => (
+                  {orderedParts.map((part, i) => (
                     <MessagePart
                       key={
                         part.type === "tool-fetchWebPage"
