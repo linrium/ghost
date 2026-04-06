@@ -1,16 +1,13 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai"
-import { ollama } from "ollama-ai-provider-v2"
+import { createAgentUIStreamResponse, type UIMessage } from "ai"
+import { chatAgent } from "@/lib/agents/chat-agent"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json()
 
-  const result = streamText({
-    model: ollama("gemma4:e4b"),
-    system: "You are a helpful assistant.",
-    messages: await convertToModelMessages(messages),
+  return createAgentUIStreamResponse({
+    agent: chatAgent,
+    uiMessages: messages,
   })
-
-  return result.toUIMessageStreamResponse()
 }
